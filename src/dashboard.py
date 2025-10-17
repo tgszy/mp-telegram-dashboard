@@ -1,6 +1,8 @@
+import os
+import shutil
 from app.plugins import _PluginBase
 from app.utils.telegram import TelegramUtils
-from .commands import ALL_HANDLERS, build_menu
+from .commands import ALL_HANDLERS, append_keyboard
 from telegram.ext import CommandHandler
 
 class TelegramDashboard(_PluginBase):
@@ -12,14 +14,21 @@ class TelegramDashboard(_PluginBase):
     plugin_auth_level = 2          # 管理员可用
 
     def init_plugin(self, config=None):
-        if not self.get_state():
+        # ✅ 修复①：MP1.9+ 用 is_enabled()
+        if not self.is_enabled():
             return
+
+        # ✅ 修复②：首次运行时创建 config 目录并复制模板
+        os.makedirs(os.path.join(self.get_data_path(), "config"), exist_ok=True)
+        tpl = os.path.join(os.path.dirname(__file__), "config", "template.yml")
+        cfg = os.path.join(self.get_data_path(), "config", "config.yml")
+        if not os.path.exists(cfg):
+            shutil.copy(tpl, cfg)
+
         utils = TelegramUtils()
-        # 注册命令
+        # 注册所有命令
         for h in ALL_HANDLERS:
             utils.add_handler(h)
-        # 注入按钮
-        utils.add_handler(build_menu())
         return utils
 
     def get_fields(self):
